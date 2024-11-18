@@ -1,0 +1,6 @@
+C:\Users\User\source\repos\LightDB\bin\Debug\LightDB.dll
+C:\Users\User\source\repos\LightDB\bin\Debug\LightDB.pdb
+C:\Users\User\source\repos\LightDB\obj\Debug\LightDB.csproj.AssemblyReference.cache
+C:\Users\User\source\repos\LightDB\obj\Debug\LightDB.csproj.CoreCompileInputs.cache
+C:\Users\User\source\repos\LightDB\obj\Debug\LightDB.dll
+C:\Users\User\source\repos\LightDB\obj\Debug\LightDB.pdb
