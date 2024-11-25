@@ -6,8 +6,8 @@ namespace LightDB
     public class LightEntity<TEntity>
     {
         private TEntity _backendEntity;
-        
-        public TEntity Entity { get; private set; }        
+
+        public TEntity Entity { get; private set; }
 
         public bool IsDeleted { get; private set; }
 
@@ -15,9 +15,17 @@ namespace LightDB
         {
             get
             {
-                return !Entity.Equals(_backendEntity);
+                return GetChangedProperties().ChangedProperties.Count > 0;
             }
         }
+
+        public bool IsOld { get; private set; } = false;
+
+        internal void SetOld() => IsOld = true;
+
+
+        internal TEntity GetBackendEntity() => _backendEntity;
+
 
         public void SetEntity(TEntity entity, TEntity backendEntity)
         {
@@ -28,26 +36,26 @@ namespace LightDB
         public void Delete() =>
             IsDeleted = true;
 
-        public void Restore() =>        
+        public void Restore() =>
             IsDeleted = false;
 
-        public (Dictionary<string, object> ChangedProperties, Dictionary<string, object> UnchangedProperties) GetChangedProperties()
+        public (Dictionary<string, object> ChangedProperties, Dictionary<string, object> AllProperties) GetChangedProperties()
         {
             var properties = _backendEntity.GetType().GetRuntimeProperties();
 
             Dictionary<string, object> changedProperties = new Dictionary<string, object>();
-            Dictionary<string, object> unchangedProperties = new Dictionary<string, object>();
+            Dictionary<string, object> allProperties = new Dictionary<string, object>();
             foreach (var property in properties)
             {
                 var entityValue = Entity.GetType().GetProperty(property.Name).GetValue(Entity).ToString();
                 var backendEntityValue = _backendEntity.GetType().GetProperty(property.Name).GetValue(_backendEntity).ToString();
-                if (entityValue != backendEntityValue)                
+                if (entityValue != backendEntityValue)
                     changedProperties.Add(property.Name, property.GetValue(Entity));
 
-                unchangedProperties.Add(property.Name, property.GetValue(_backendEntity));
+                allProperties.Add(property.Name, property.GetValue(_backendEntity));
             }
 
-            return (changedProperties, unchangedProperties);
+            return (changedProperties, allProperties);
         }
     }
 }

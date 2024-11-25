@@ -5,6 +5,7 @@ using System.Text;
 using System.Collections;
 using System.Data.SqlClient;
 using System.Collections.Generic;
+using System.Reflection;
 
 namespace LightDB
 {
@@ -132,10 +133,14 @@ namespace LightDB
             return lightSqlData;
         }
 
+
+
         public void Commit<TEntity>(IEnumerable<LightEntity<TEntity>> entities, string tableName)
         {
             var changedEntities = new List<LightEntity<TEntity>>();
             var deletedEntities = new List<LightEntity<TEntity>>();
+            var newEntities = new List<LightEntity<TEntity>>();
+
             foreach (var entity in entities)
             {
                 if (entity.IsChanged && !entity.IsDeleted)
@@ -143,10 +148,50 @@ namespace LightDB
 
                 if (entity.IsDeleted)
                     deletedEntities.Add(entity);
+
+                if (!entity.IsOld)
+                    newEntities.Add(entity);
             }
+
+
+
 
             Update(changedEntities, tableName);
             Delete(deletedEntities, tableName);
+            Insert(newEntities, tableName);
+        }
+
+        private void Insert<TEntity>(IEnumerable<LightEntity<TEntity>> entities, string tableName)
+        {
+            var sql = "SELECT COLUMN_NAME" +
+                " FROM INFORMATION_SCHEMA.COLUMNS" +
+                $" WHERE TABLE_NAME = '{tableName}'" +
+                " AND COLUMNPROPERTY(OBJECT_ID(TABLE_NAME), COLUMN_NAME, 'IsIdentity') = 1;";
+
+            var result = ExecuteSqlCommand(sql);
+
+            if (result.RowsCount <= 0)
+                throw new NotImplementedException("Auto-increment fields was not found");
+
+            for (int i = 0; i < entities.Count(); i++)
+            {
+                var propertiesValues = entities.ElementAt(i).GetChangedProperties().AllProperties;
+
+                StringBuilder insertSql = new StringBuilder($"INSERT INTO {tableName} VALUES (");
+                for (int j = 0; j < propertiesValues.Count; j++)
+                {
+                    for (int k = 0; k < result.RowsCount; k++)
+                    {
+                        var propertyName = (result.GetRawData()[k] as ArrayList)[0].ToString().ToLower();
+                        if (propertyName != propertiesValues.ElementAt(j).Key.ToLower())
+                            insertSql.Append($"'{propertiesValues.ElementAt(j).Value}',");
+                    }
+                }
+                insertSql.Remove(insertSql.Length - 1, 1);
+                insertSql.Append(")");
+
+                ExecuteSqlCommand(insertSql.ToString());
+            }            
         }
 
         private void Delete<TEntity>(IEnumerable<LightEntity<TEntity>> entities, string tableName)
@@ -155,10 +200,10 @@ namespace LightDB
 
             foreach (var entityProperty in entitiesProperties)
             {
-                var unchangedProperties = entityProperty.UnchangedProperties;
+                var unchangedProperties = entityProperty.AllProperties;
 
                 var conditions = $"{unchangedProperties.ElementAt(0).Key} = '{unchangedProperties.ElementAt(0).Value}'";
-                for (int i = 1; i < entityProperty.UnchangedProperties.Count; i++)
+                for (int i = 1; i < entityProperty.AllProperties.Count; i++)
                 {
                     conditions += $" AND {unchangedProperties.ElementAt(i).Key} = '{unchangedProperties.ElementAt(i).Value}'";
                 }
@@ -184,10 +229,10 @@ namespace LightDB
                 if (properties.Length > 0)
                     properties.Remove(properties.Length - 1, 1);
 
-                var unchangedProperties = entityProperty.UnchangedProperties;
+                var unchangedProperties = entityProperty.AllProperties;
 
                 var conditions = $"{unchangedProperties.ElementAt(0).Key} = '{unchangedProperties.ElementAt(0).Value}'";
-                for (int i = 1; i < entityProperty.UnchangedProperties.Count; i++)
+                for (int i = 1; i < entityProperty.AllProperties.Count; i++)
                 {
                     conditions += $" AND {unchangedProperties.ElementAt(i).Key} = '{unchangedProperties.ElementAt(i).Value}'";
                 }

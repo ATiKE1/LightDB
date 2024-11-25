@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace LightDB
 {
@@ -26,6 +27,8 @@ namespace LightDB
             SetValues(columnsNames, dynamicDataList);
         }
 
+        public ObservableCollection<TEntity> GetObservableCollection() => new ObservableCollection<TEntity>(Entities.Select(e => e.Entity)); 
+
         public void SetValues(ArrayList columnsNames, ArrayList dynamicDataList)
         {
             ColumnsNames = columnsNames;
@@ -33,9 +36,41 @@ namespace LightDB
 
             foreach (ArrayList entity in dynamicDataList)
             {
-                Entities.Add(CastToEntity(entity));
+                var entityToAdd = CastToEntity(entity);
+                entityToAdd.SetOld();
+
+                Entities.Add(entityToAdd);
             }
-        }        
+        }
+
+        public IEnumerable<LightEntity<TEntity>> GetNewEntities()
+        {
+            var addedEntitiesList = new List<LightEntity<TEntity>>();
+            for (int i = 0; i < RowsCount; i++)
+            {
+                var entity = Entities[i].GetBackendEntity();
+
+                bool isEntityFound = false;
+                foreach (var rawDataElement in RawData)
+                {
+                    var rawDataEntity = CastToEntity(rawDataElement as ArrayList).Entity;
+
+                    if (rawDataEntity.Equals(entity))
+                    {
+                        isEntityFound = true;
+                        break;
+                    }
+                }
+
+                if (!isEntityFound)
+                {
+                    Entities.ElementAt(i).SetOld();
+                    addedEntitiesList.Add(Entities.ElementAt(i));
+                }
+            }
+
+            return addedEntitiesList;
+        }
 
         public LightEntity<TEntity> CastToEntity(ArrayList entity)
         {

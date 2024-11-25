@@ -41,6 +41,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Data\DynamicEntityWrapper.cs" />
+    <Compile Include="Data\LightPrimaryKey.cs" />
     <Compile Include="Models\LightEntity.cs" />
     <Compile Include="Data\LightDB.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
