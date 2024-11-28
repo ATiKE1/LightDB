@@ -1,12 +1,11 @@
-﻿using System;
-using System.Data;
-using System.Linq;
+﻿using System.Data;
 using System.Reflection;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
+using System;
 
-namespace LightDB
+namespace LightDatabase
 {
     public class LightSqlData<TEntity>
     {
@@ -14,7 +13,7 @@ namespace LightDB
 
         public ArrayList ColumnsNames { get; private set; }
 
-        public List<LightEntity<TEntity>> Entities = new List<LightEntity<TEntity>>();
+        public ObservableCollection<LightEntity<TEntity>> Entities = new ObservableCollection<LightEntity<TEntity>>();
 
         public int RowsCount => Entities.Count;
 
@@ -22,14 +21,9 @@ namespace LightDB
 
         public LightSqlData() { }
 
-        public LightSqlData(ArrayList columnsNames, ArrayList dynamicDataList)
-        {
-            SetValues(columnsNames, dynamicDataList);
-        }
+        public LightSqlData(ArrayList columnsNames, ArrayList dynamicDataList) => SetEntitiesFromDatabase(columnsNames, dynamicDataList);
 
-        public ObservableCollection<TEntity> GetObservableCollection() => new ObservableCollection<TEntity>(Entities.Select(e => e.Entity)); 
-
-        public void SetValues(ArrayList columnsNames, ArrayList dynamicDataList)
+        internal void SetEntitiesFromDatabase(ArrayList columnsNames, ArrayList dynamicDataList)
         {
             ColumnsNames = columnsNames;
             RawData = dynamicDataList;
@@ -43,54 +37,25 @@ namespace LightDB
             }
         }
 
-        public IEnumerable<LightEntity<TEntity>> GetNewEntities()
+        internal LightEntity<TEntity> CastToEntity(ArrayList entity)
         {
-            var addedEntitiesList = new List<LightEntity<TEntity>>();
-            for (int i = 0; i < RowsCount; i++)
-            {
-                var entity = Entities[i].GetBackendEntity();
-
-                bool isEntityFound = false;
-                foreach (var rawDataElement in RawData)
-                {
-                    var rawDataEntity = CastToEntity(rawDataElement as ArrayList).Entity;
-
-                    if (rawDataEntity.Equals(entity))
-                    {
-                        isEntityFound = true;
-                        break;
-                    }
-                }
-
-                if (!isEntityFound)
-                {
-                    Entities.ElementAt(i).SetOld();
-                    addedEntitiesList.Add(Entities.ElementAt(i));
-                }
-            }
-
-            return addedEntitiesList;
-        }
-
-        public LightEntity<TEntity> CastToEntity(ArrayList entity)
-        {
-            LightEntity<TEntity> tempEntity = new LightEntity<TEntity>();           
+            LightEntity<TEntity> tempEntity = new LightEntity<TEntity>();
 
             var properties = typeof(TEntity).GetRuntimeProperties();
 
             object[] args = new object[properties.Count()];
 
-            for (int i = 0; i < properties.Count(); i++)            
-                args[i] = entity[i];                        
+            for (int i = 0; i < properties.Count(); i++)
+                args[i] = entity[i];
 
             tempEntity.SetEntity((TEntity)Activator.CreateInstance(typeof(TEntity), args), (TEntity)Activator.CreateInstance(typeof(TEntity), args));
 
             return tempEntity;
-        }        
+        }
 
-        public List<LightEntity<TEntity>> GetValues() => Entities;
+        internal ArrayList GetRawData() => RawData;
 
-        public ArrayList GetRawData() => RawData; 
+        public ObservableCollection<TEntity> ToObservableCollection() => new ObservableCollection<TEntity>(Entities.Select(e => e.Entity));
 
         public DataTable ToDataTable()
         {
@@ -115,6 +80,20 @@ namespace LightDB
             }
 
             return dataTable;
+        }
+
+        public void AddEntity(TEntity entity)
+        {
+            var lightEntity = new LightEntity<TEntity>();
+            lightEntity.SetEntity(entity, entity);
+            Entities.Add(lightEntity);
+        }
+
+        public void RemoveEntity(TEntity entity)
+        {
+            var lightEntity = Entities.FirstOrDefault(e => e.Entity.Equals(entity));
+            if (lightEntity != null)
+                lightEntity.Delete();
         }
     }
 }

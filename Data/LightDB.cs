@@ -5,12 +5,12 @@ using System.Text;
 using System.Collections;
 using System.Data.SqlClient;
 using System.Collections.Generic;
-using System.Reflection;
 
-namespace LightDB
+namespace LightDatabase
 {
     public class LightDB
     {
+        private static LightDB _instance = null;
         private SqlConnection _connection = null;
         private string _connectionString = "Server=(localdb)\\mssqllocaldb;Database=master;Trusted_Connection=True;";
 
@@ -33,6 +33,7 @@ namespace LightDB
             try
             {
                 _connection.Close();
+                _instance = null;
                 return true;
             }
             catch (SqlException ex)
@@ -41,7 +42,15 @@ namespace LightDB
             }
         }
 
-        public LightDB(string connectionString)
+        public static LightDB GetInstance(string connectionString) 
+        {
+            if (_instance is null)
+                return _instance = new LightDB(connectionString);
+
+            return _instance;
+        }
+
+        private LightDB(string connectionString)
         {
             _connectionString = connectionString;
 
@@ -50,13 +59,13 @@ namespace LightDB
 
         }
 
-        public LightSqlData<TEntity> ExecuteSqlCommand<TEntity>(string sql_command)
+        public LightSqlData<TEntity> ExecuteSqlCommand<TEntity>(string sqlCommand)
         {
             ArrayList dynamicResultList = new ArrayList();
             LightSqlData<TEntity> lightSqlData = new LightSqlData<TEntity>();
 
             SqlCommand command = _connection.CreateCommand();
-            command.CommandText = sql_command;
+            command.CommandText = sqlCommand;
 
             SqlDataReader reader = command.ExecuteReader();
 
@@ -83,7 +92,7 @@ namespace LightDB
                     columnsNames.Add(reader.GetName(i));
                 }
 
-                lightSqlData.SetValues(columnsNames, dynamicResultList);
+                lightSqlData.SetEntitiesFromDatabase(columnsNames, dynamicResultList);
             }
 
             reader.Close();
@@ -91,13 +100,13 @@ namespace LightDB
             return lightSqlData;
         }
 
-        public LightSqlData<object> ExecuteSqlCommand(string sql_command)
+        public LightSqlData<object> ExecuteSqlCommand(string sqlCommand)
         {
             ArrayList dynamicResultList = new ArrayList();
             LightSqlData<object> lightSqlData = new LightSqlData<object>();
 
             SqlCommand command = _connection.CreateCommand();
-            command.CommandText = sql_command;
+            command.CommandText = sqlCommand;
 
             SqlDataReader reader = command.ExecuteReader();
 
@@ -123,7 +132,7 @@ namespace LightDB
                 for (int i = 0; i < reader.GetSchemaTable().Rows.Count; i++)
                     columnsNames.Add(reader.GetName(i));
 
-                lightSqlData.SetValues(columnsNames, dynamicResultList);
+                lightSqlData.SetEntitiesFromDatabase(columnsNames, dynamicResultList);
             }
 
             reader.Close();
@@ -132,8 +141,6 @@ namespace LightDB
 
             return lightSqlData;
         }
-
-
 
         public void Commit<TEntity>(IEnumerable<LightEntity<TEntity>> entities, string tableName)
         {
@@ -184,14 +191,14 @@ namespace LightDB
                     {
                         var propertyName = (result.GetRawData()[k] as ArrayList)[0].ToString().ToLower();
                         if (propertyName != propertiesValues.ElementAt(j).Key.ToLower())
-                            insertSql.Append($"'{propertiesValues.ElementAt(j).Value}',");
+                            insertSql.Append($"'{propertiesValues.ElementAt(j).Value.ToString().Replace("'", "''")}',");
                     }
                 }
                 insertSql.Remove(insertSql.Length - 1, 1);
                 insertSql.Append(")");
 
                 ExecuteSqlCommand(insertSql.ToString());
-            }            
+            }
         }
 
         private void Delete<TEntity>(IEnumerable<LightEntity<TEntity>> entities, string tableName)
@@ -202,10 +209,10 @@ namespace LightDB
             {
                 var unchangedProperties = entityProperty.AllProperties;
 
-                var conditions = $"{unchangedProperties.ElementAt(0).Key} = '{unchangedProperties.ElementAt(0).Value}'";
+                var conditions = $"{unchangedProperties.ElementAt(0).Key} = '{unchangedProperties.ElementAt(0).Value.ToString().Replace("'", "''")}'";
                 for (int i = 1; i < entityProperty.AllProperties.Count; i++)
                 {
-                    conditions += $" AND {unchangedProperties.ElementAt(i).Key} = '{unchangedProperties.ElementAt(i).Value}'";
+                    conditions += $" AND {unchangedProperties.ElementAt(i).Key} = '{unchangedProperties.ElementAt(i).Value.ToString().Replace("'", "''")}'";
                 }
 
                 string sql = $"DELETE FROM {tableName} WHERE {conditions}";
@@ -231,10 +238,10 @@ namespace LightDB
 
                 var unchangedProperties = entityProperty.AllProperties;
 
-                var conditions = $"{unchangedProperties.ElementAt(0).Key} = '{unchangedProperties.ElementAt(0).Value}'";
+                var conditions = $"{unchangedProperties.ElementAt(0).Key} = '{unchangedProperties.ElementAt(0).Value.ToString().Replace("'", "''")}'";
                 for (int i = 1; i < entityProperty.AllProperties.Count; i++)
                 {
-                    conditions += $" AND {unchangedProperties.ElementAt(i).Key} = '{unchangedProperties.ElementAt(i).Value}'";
+                    conditions += $" AND {unchangedProperties.ElementAt(i).Key} = '{unchangedProperties.ElementAt(i).Value.ToString().Replace("'", "''")}'";
                 }
 
                 if (!string.IsNullOrWhiteSpace(properties.ToString()) && !string.IsNullOrWhiteSpace(conditions))

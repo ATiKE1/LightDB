@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using System.Collections.Generic;
 
-namespace LightDB
+namespace LightDatabase
 {
     public class LightEntity<TEntity>
     {
