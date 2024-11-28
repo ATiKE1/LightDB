@@ -41,9 +41,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="LightDB.cs" />
+    <Compile Include="Models\LightEntity.cs" />
+    <Compile Include="Data\LightDB.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="LightSqlData.cs" />
+    <Compile Include="Data\LightSqlData.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
